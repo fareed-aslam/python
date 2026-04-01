@@ -1184,8 +1184,314 @@ action1 = agent5.act("Pos_0")
 print(action1)
 # Agent falls in trap and gets -10 reward
 agent5.learn("Pos_0", reward=-10) 
+-------------------------------------------------------
+GA Algorithm
+-------------------------------------------------------
+🟢 SCENARIO 1 — N-Queens (Change Fitness Strategy)
+🔹 Problem Variation:
+
+👉 Same N-Queens, lekin ab:
+
+Fitness = number of conflicts (minimize)
+(Pehle maximize non-attacking tha)
+🔹 Kya Change Hua?
+Part	Change
+Fitness	maximize → minimize
+Selection	descending → ascending
+🔹 Code (Modified)
+import random
+
+n = 8
+
+def fitness(ind):
+    conflicts = 0
+    for i in range(n):
+        for j in range(i+1, n):
+            if ind[i] == ind[j] or abs(ind[i]-ind[j]) == abs(i-j):
+                conflicts += 1
+    return conflicts  # lower is better
+
+
+def create():
+    return random.sample(range(n), n)
+
+
+population = [create() for _ in range(10)]
+
+for gen in range(100):
+    # sort ascending (LOWER is better)
+    population = sorted(population, key=fitness)
+
+    if fitness(population[0]) == 0:
+        break
+
+    new_pop = population[:5]
+
+    while len(new_pop) < 10:
+        p1, p2 = random.sample(population[:5], 2)
+
+        point = random.randint(1, n-2)
+        child = p1[:point] + p2[point:]
+
+        if random.random() < 0.1:
+            i, j = random.sample(range(n), 2)
+            child[i], child[j] = child[j], child[i]
+
+        new_pop.append(child)
+
+    population = new_pop
+
+print("Solution:", population[0])
+🔵 SCENARIO 2 — Traveling Salesman Problem (TSP)
+🔹 Problem:
+
+👉 Cities diye gaye hain
+👉 Shortest route find karo (min distance)
+
+🔹 IMPORTANT CHANGE:
+Part	Change
+Chromosome	permutation of cities
+Fitness	total distance (minimize)
+Crossover	permutation-safe hona chahiye
+🔹 Code
+import random
+import math
+
+cities = [(0,0), (1,5), (5,2), (6,6), (8,3)]
+n = len(cities)
+
+def distance(a, b):
+    return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
+
+
+def fitness(route):
+    total = 0
+    for i in range(n-1):
+        total += distance(cities[route[i]], cities[route[i+1]])
+    total += distance(cities[route[-1]], cities[route[0]])
+    return total  # minimize
+
+
+def create():
+    return random.sample(range(n), n)
+
+
+def crossover(p1, p2):
+    point = random.randint(1, n-2)
+    child = p1[:point] + [x for x in p2 if x not in p1[:point]]
+    return child
+
+
+def mutate(route):
+    i, j = random.sample(range(n), 2)
+    route[i], route[j] = route[j], route[i]
+    return route
+
+
+population = [create() for _ in range(10)]
+
+for _ in range(200):
+    population = sorted(population, key=fitness)
+
+    new_pop = population[:5]
+
+    while len(new_pop) < 10:
+        p1, p2 = random.sample(new_pop, 2)
+        child = crossover(p1, p2)
+
+        if random.random() < 0.1:
+            child = mutate(child)
+
+        new_pop.append(child)
+
+    population = new_pop
+
+print("Best route:", population[0])
+🟡 SCENARIO 3 — Duty Scheduling (Modified Constraint)
+🔹 Problem Change:
+
+👉 Add new constraint:
+
+Har staff max 5 shifts kare
+Agar exceed kare → penalty
+🔹 Kya Change Hua?
+Part	Change
+Fitness	new penalty added
+Constraint	max shifts per staff
+🔹 Code (Modified Fitness)
+import random
+
+num_staff = 5
+num_shifts = 21
+max_shifts_per_staff = 5
+
+def fitness(schedule):
+    penalty = 0
+
+    # coverage check
+    for shift in range(num_shifts):
+        assigned = sum(schedule[s][shift] for s in range(num_staff))
+        if assigned < 2:
+            penalty += (2 - assigned) * 10
+
+    # consecutive shifts
+    for s in range(num_staff):
+        for shift in range(num_shifts-1):
+            if schedule[s][shift] == 1 and schedule[s][shift+1] == 1:
+                penalty += 5
+
+    # NEW constraint (IMPORTANT)
+    for s in range(num_staff):
+        total = sum(schedule[s])
+        if total > max_shifts_per_staff:
+            penalty += (total - max_shifts_per_staff) * 7
+
+    return penalty
+
+👉 Baaki GA same rahega
+
+🔴 SCENARIO 4 — Knapsack Problem
+🔹 Problem:
+
+👉 Items pick karo:
+
+Weight limit exceed na ho
+Value maximize ho
+🔹 Code
+import random
+
+weights = [2,3,4,5]
+values = [3,4,5,6]
+capacity = 8
+n = len(weights)
+
+def fitness(ind):
+    total_w = sum(ind[i]*weights[i] for i in range(n))
+    total_v = sum(ind[i]*values[i] for i in range(n))
+
+    if total_w > capacity:
+        return 0  # invalid
+
+    return total_v
+
+
+def create():
+    return [random.randint(0,1) for _ in range(n)]
+
+
+def crossover(p1, p2):
+    point = random.randint(1, n-1)
+    return p1[:point] + p2[point:]
+
+
+def mutate(ind):
+    i = random.randint(0, n-1)
+    ind[i] = 1 - ind[i]
+    return ind
+
+
+population = [create() for _ in range(10)]
+
+for _ in range(100):
+    population = sorted(population, key=fitness, reverse=True)
+
+    new_pop = population[:5]
+
+    while len(new_pop) < 10:
+        p1, p2 = random.sample(new_pop, 2)
+        child = crossover(p1, p2)
+
+        if random.random() < 0.1:
+            child = mutate(child)
+
+        new_pop.append(child)
+
+    population = new_pop
+
+print("Best:", population[0])
+
 
 print("\n--- Second Run (Experienced) ---")
 action2 = agent5.act("Pos_0")
 print(action2) # Ab isne apna behavior tabdeel kar liya!
 -------------------------------------------------------------------------------------
+
+import random
+
+n = 8
+population_size = 20
+mutation_rate = 0.1
+max_generations = 200
+
+# Fitness Function
+def fitness(ind):
+    non_attacking = 0
+    total_pairs = n * (n - 1) // 2
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if ind[i] != ind[j] and abs(ind[i] - ind[j]) != abs(i - j):
+                non_attacking += 1
+
+    return non_attacking / total_pairs
+
+
+# Create Individual
+def create_individual():
+    return random.sample(range(n), n)
+
+
+# Selection (Tournament)
+def selection(pop):
+    selected = []
+    for _ in range(len(pop)):
+        a, b = random.sample(pop, 2)
+        selected.append(a if fitness(a) > fitness(b) else b)
+    return selected
+
+
+# Crossover (Order Preserving)
+def crossover(p1, p2):
+    point = random.randint(1, n - 2)
+    child = p1[:point] + [x for x in p2 if x not in p1[:point]]
+    return child
+
+
+# Mutation (Swap)
+def mutate(ind):
+    i, j = random.sample(range(n), 2)
+    ind[i], ind[j] = ind[j], ind[i]
+    return ind
+
+
+# GA Loop
+def genetic_algorithm():
+    population = [create_individual() for _ in range(population_size)]
+
+    for gen in range(max_generations):
+        population = sorted(population, key=fitness, reverse=True)
+
+        if fitness(population[0]) == 1.0:
+            return population[0]
+
+        selected = selection(population)
+
+        new_pop = []
+        for i in range(population_size):
+            p1, p2 = random.sample(selected, 2)
+            child = crossover(p1, p2)
+
+            if random.random() < mutation_rate:
+                child = mutate(child)
+
+            new_pop.append(child)
+
+        population = new_pop
+
+    return max(population, key=fitness)
+
+
+solution = genetic_algorithm()
+print("Solution:", solution)
+------------------------------------------------------------------
+
