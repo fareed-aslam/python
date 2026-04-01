@@ -936,3 +936,256 @@ env = Environment(goal_node="G")
 astar_agent = AStarAgent(start_node="S", environment=env)
 run_agent(astar_agent, env, 10)
 -----------------------------------------------------------------
+simple agents
+---------------------------------------------------------------
+class SimpleReflexAgent:
+    def act(self, location, status):
+        # Agar kachra hai, toh saaf karo
+        if status == 'Dirty':
+            return 'Suck (Kachra uthao)'
+        
+        # Agar kachra nahi hai, toh dusre kamre mein jao
+        elif location == 'A':
+            return 'Move Right (Kamra B mein jao)'
+        elif location == 'B':
+            return 'Move Left (Kamra A mein jao)'
+
+# Run:
+agent1 = SimpleReflexAgent()
+print(agent1.act('A', 'Dirty')) # Output: Suck
+----------------------------------------------------
+class ModelBasedAgent:
+    def __init__(self):
+        # Agent ki Memory (Model of the world)
+        self.memory = {'A': 'Unknown', 'B': 'Unknown'}
+
+    def act(self, location, status):
+        # Pehle apni memory update karo jo abhi dekha
+        self.memory[location] = status
+
+        # Agar dono saaf hain, toh aaraam karo (No infinite loop)
+        if self.memory['A'] == 'Clean' and self.memory['B'] == 'Clean':
+            return 'Stop (Kaam khatam)'
+
+        # Baqi rules wahi Simple Reflex wale
+        if status == 'Dirty':
+            return 'Suck'
+        elif location == 'A':
+            return 'Move Right'
+        elif location == 'B':
+            return 'Move Left'
+
+# Run:
+agent2 = ModelBasedAgent()
+print(agent2.act('A', 'Clean')) # A clean hai, B me jayega
+print(agent2.act('B', 'Clean')) # B bhi clean mila, Memory update hui aur STOP ho jayega.
+------------------------------------------------------------------------------------------
+class GoalBasedAgent:
+    def __init__(self, goal_location):
+        self.goal = goal_location
+
+    def act(self, current_location, map_graph):
+        # Action lene se pehle ye dekhega ke Goal kahan hai
+        if current_location == self.goal:
+            return "Goal Reached! Chill."
+        
+        # Yahan ye BFS ya A* chala kar poora rasta (plan) banayega
+        path = self.calculate_path_to_goal(current_location, map_graph)
+        
+        # Raste ka pehla qadam uthayega
+        return f"Move towards {path[0]}"
+
+    def calculate_path_to_goal(self, current, map_graph):
+        # (Imagine here is the BFS/A* code we wrote earlier)
+        return ["Next_Node"]
+----------------------------------------------------------------------------------------------------
+class UtilityBasedAgent:
+    def act(self, current_location, possible_actions):
+        best_action = None
+        highest_utility = -999 # Shuru mein khushi zero hai
+        
+        # Har action ko check karega ke isme kitna faida/kharcha hai
+        for action in possible_actions:
+            # Utility Formula = Faida - Kharcha
+            expected_utility = self.evaluate_happiness(current_location, action)
+            
+            if expected_utility > highest_utility:
+                highest_utility = expected_utility
+                best_action = action
+                
+        # Sab se faide-mand action return karega
+        return best_action
+
+    def evaluate_happiness(self, location, action):
+        # Misaal: Agar action me time kam lag raha he to happiness zyada hogi
+        return 10 # Example score
+--------------------------------------------------------------------------------------------------
+class LearningAgent:
+    def __init__(self):
+        # Iski performance ki history
+        self.knowledge_base = {}
+
+    def act(self, state):
+        # Agar is state ka pehle se pata hai, toh purana knowledge use karo
+        if state in self.knowledge_base:
+            return self.knowledge_base[state]
+        else:
+            return "Try Random Action" # Shuru mein random try karega
+
+    def learn(self, state, action, reward):
+        # Kaam karne ke baad jo result (Reward) mila, us se seekho
+        if reward > 0:
+            print(f"Good! I learned that doing {action} in {state} is beneficial.")
+            self.knowledge_base[state] = action
+        else:
+            print(f"Bad choice. I won't do {action} in {state} again.")
+-----------------------------------------------------------------------------------------------------
+agents with grid
+---------------------------------------------------------------------
+import random
+
+print("--- 1. Simple Reflex Agent ---")
+# Grid: 'D' = Dirty, 'C' = Clean
+grid = [
+    ['D', 'C'],
+    ['C', 'D']
+]
+
+class SimpleReflexAgent:
+    def act(self, r, c, grid):
+        status = grid[r][c]
+        if status == 'D':
+            grid[r][c] = 'C' # Kachra saaf kar diya
+            return f"Action: Suck (Cleaned {r},{c})"
+        else:
+            # Agar clean hai toh andha-dhund (random) move karo kyunke memory nahi hai
+            move = random.choice(["Right", "Down", "Left", "Up"])
+            return f"Action: Move {move} (Just wandering randomly)"
+
+agent = SimpleReflexAgent()
+# Agent (0,0) par hai
+print(f"Step 1: {agent.act(0, 0, grid)}") 
+# Agle step mein wo kahan jayega? Usko khud nahi pata!
+print(f"Step 2: {agent.act(0, 0, grid)}") # Ab wahan 'C' hai, toh random move karega
+--------------------------------------------------------------------------------
+print("\n--- 2. Model-Based Agent ---")
+grid_model = [
+    ['D', 'D'],
+    ['C', 'D']
+]
+
+class ModelBasedAgent:
+    def __init__(self):
+        # Dimagh mein grid ka naqsha (Memory)
+        self.memory = set() 
+        self.total_dirty_spots = 3 # Farz karo isey pata hai 3 kachre hain
+
+    def act(self, r, c, grid):
+        status = grid[r][c]
+        
+        # Memory update karo
+        self.memory.add((r, c))
+        
+        if len(self.memory) == 4: # Agar poora grid ghoom lia
+            return "Action: Stop! Pura grid visit ho gaya."
+
+        if status == 'D':
+            grid[r][c] = 'C'
+            self.total_dirty_spots -= 1
+            if self.total_dirty_spots == 0:
+                return f"Action: Suck (Cleaned {r},{c}). STOP! Sab saaf ho gaya."
+            return f"Action: Suck (Cleaned {r},{c})"
+        else:
+            return f"Action: Move to next unvisited room"
+
+agent2 = ModelBasedAgent()
+print(agent2.act(0, 0, grid_model))
+print(agent2.act(0, 1, grid_model))
+print(agent2.act(1, 1, grid_model)) # Yahan aakar isey pata chal jayega ke sab saaf hai
+----------------------------------------------------------------------------------------
+print("\n--- 3. Goal-Based Agent ---")
+# Scenario: S se G jana hai
+grid_goal = [
+    ['S', '0', 'G'],
+    ['#', '#', '0']
+]
+
+class GoalBasedAgent:
+    def plan_path(self):
+        # Is agent ka dimagh future ka sochta hai. Ye pehle map dekhta hai aur path plan karta hai
+        print("Thinking... Planning path to Goal using Search...")
+        # (Assume BFS runs here internally and finds the path)
+        planned_path = ["Right", "Right"]
+        return planned_path
+
+    def act(self, path):
+        print("Executing Plan:")
+        for step in path:
+            print(f"Moving {step}")
+        print("Goal Reached!")
+
+agent3 = GoalBasedAgent()
+my_plan = agent3.plan_path()
+agent3.act(my_plan)
+---------------------------------------------------------------------
+print("\n--- 4. Utility-Based Agent ---")
+# Scenario: 2 raste. Rasta A (Cost 10, Aag). Rasta B (Cost 2, Safe)
+paths = {
+    "Path_Through_Fire": {"steps": 1, "danger_cost": 10},
+    "Path_Around_Fire": {"steps": 3, "danger_cost": 1}
+}
+
+class UtilityBasedAgent:
+    def act(self, available_paths):
+        best_path = None
+        best_utility = -999 # Shuru mein khushi negative hai
+
+        for path_name, details in available_paths.items():
+            # Utility Formula = (Goal Pohanchne ka Faida 100) - (Steps + Danger Cost)
+            # Jo agent math aur cost/heuristic check kare, wo Utility agent hota hai!
+            utility = 100 - (details["steps"] + details["danger_cost"])
+            print(f"Checking {path_name}: Utility Score = {utility}")
+            
+            if utility > best_utility:
+                best_utility = utility
+                best_path = path_name
+                
+        return f"Action: I choose '{best_path}' because it has the highest utility ({best_utility})"
+
+agent4 = UtilityBasedAgent()
+print(agent4.act(paths))
+---------------------------------------------------------------------------
+print("\n--- 5. Learning Agent ---")
+# Scenario: (0,1) par ek Trap hai.
+grid_learn = [
+    ['S', 'Trap', 'G']
+]
+
+class LearningAgent:
+    def __init__(self):
+        self.knowledge = {} # Ye iski "Seekh" (Learning) hai
+
+    def act(self, current_pos):
+        # Agar memory mein pehle se pata hai ke agay khatra hai, toh rasta badlo
+        if current_pos in self.knowledge and self.knowledge[current_pos] == "Danger":
+            return "Action: Jump over the Trap (Learned from past mistake!)"
+        else:
+            return "Action: Move Right (I don't know what's ahead)"
+
+    def learn(self, state, reward):
+        if reward < 0:
+            print(f"Ouch! Critic says: Bad move. I learned that {state} leads to a trap.")
+            self.knowledge[state] = "Danger" # Dimagh mein save kar lia
+
+agent5 = LearningAgent()
+
+print("--- First Run (Ignorant) ---")
+action1 = agent5.act("Pos_0")
+print(action1)
+# Agent falls in trap and gets -10 reward
+agent5.learn("Pos_0", reward=-10) 
+
+print("\n--- Second Run (Experienced) ---")
+action2 = agent5.act("Pos_0")
+print(action2) # Ab isne apna behavior tabdeel kar liya!
+-------------------------------------------------------------------------------------
